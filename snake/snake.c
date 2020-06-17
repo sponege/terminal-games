@@ -32,7 +32,6 @@ int cellCount = 0;
 
 int randrange(int lower, int upper) {
     // copied and modified from https://www.geeksforgeeks.org/generating-random-number-range-c/
-  	srand(time(0));
 		return (rand() %
 		(upper - lower + 1)) + lower;
 }
@@ -177,6 +176,8 @@ int main() {
   nodelay(stdscr, TRUE); // don't want delay with getch input
   noecho(); // also, don't echo output
   keypad(stdscr, TRUE); // I also want to use arrow keys for controlling the snake
+
+  srand(time(0)); // init random
 
   while (1) {
 
