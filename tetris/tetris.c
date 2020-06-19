@@ -42,6 +42,7 @@
                         // it doesn't look like microsecond though, so I don't know.
                         // the standard is 1 second lock dela, and I timed this to about a second.
 #define specialLineValues 1 // search for "line values" using ctrl+f on https://tetris.fandom.com/wiki/Tetris_Guideline
+#define secondsToStart 3 // number of seconds before game starts
 
 // End of configuration
 
@@ -187,23 +188,7 @@ int getTetromino(int d, int t, int blocks[4][2]) { // returns the other 3 tetrom
   }
 }
 
-int popBag() {
-  int pop = order[orderCount]; // pop tetromino from bag
-  orderCount++; // increment "stack pointer"
-  if (orderCount > 6) { // if reached end of bag
-    orderCount = 0; // reset "stack pointer"
-    shuffle(order, 7); // shuffle order
-  }
-  return pop;
-}
-
-int popNext() {
-  int pop = next[0]; // pop tetromino from bag
-  for (int i = 0; i < nextLen - 1; i++) {
-    next[i] = next[i+1]; // move all tetrominoes up one
-  }
-  next[nextLen - 1] = popBag(); // get another tetromino into next
-
+void updateNext() {
   // draw new next blocks
 
   werase(nextWin);
@@ -224,6 +209,26 @@ int popNext() {
   }
 
   wrefresh(nextWin);
+}
+
+int popBag() {
+  int pop = order[orderCount]; // pop tetromino from bag
+  orderCount++; // increment "stack pointer"
+  if (orderCount > 6) { // if reached end of bag
+    orderCount = 0; // reset "stack pointer"
+    shuffle(order, 7); // shuffle order
+  }
+  return pop;
+}
+
+int popNext() {
+  int pop = next[0]; // pop tetromino from bag
+  for (int i = 0; i < nextLen - 1; i++) {
+    next[i] = next[i+1]; // move all tetrominoes up one
+  }
+  next[nextLen - 1] = popBag(); // get another tetromino into next
+
+  updateNext();
 
   return pop; // finally, return tetromino
 }
@@ -285,8 +290,8 @@ void findGhost() {
     wrefresh(gameWin);
 
     while (getch() != '\n'){}; // wait for enter to be pressed
-    endwin();
-    exit(0);
+    endwin(); // end window
+    exit(0); // exit
   }
 }
 
@@ -565,6 +570,7 @@ void processKeys() {
 
       tX = wid / 2 - 1; // reset x
       tY = 0; // and y position
+      lD = 0; // reset lock delay because we aren't touching ground anymore.
 
       if (swap == 0) {
         cur = popNext();
@@ -678,14 +684,35 @@ int main() {
       next[i] = popBag();
     }
 
+    tX = wid / 2 - 1; // init x position
+
     getch(); // first run of getch, to make sure nothing is cleared for no reason.
 
     updateHold();
     updateStats();
+    updateNext();
+
+    wattron(gameWin, COLOR_PAIR(8)); // default colors
+
+    for (int i = secondsToStart; i > 0; i--) { // countdown
+      char num[wid]; // for whatever reason, cannot have length of 1.
+      sprintf(num, "%d", i); // format number
+      werase(gameWin); // clear screen
+      box(gameWin, 0, 0); // I need those cool borders
+      wprintCenter(gameWin, num, wid+2, len+2, 0);
+      wmove(gameWin, 0, 0);
+      wrefresh(gameWin);
+      sleep(1);
+    }
+
+    werase(gameWin); // clear screen
+    box(gameWin, 0, 0); // I need those cool borders
+    wprintCenter(gameWin, "START!", wid+2, len+2, 0);
+    wmove(gameWin, 0, 0);
+    wrefresh(gameWin);
+    sleep(1);
 
     cur = popNext(); // get current tetromino
-
-    tX = wid / 2 - 1; // init x position
 
     while (1) { // game loop
       processKeys();
