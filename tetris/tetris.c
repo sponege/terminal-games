@@ -6,7 +6,7 @@
 #include <time.h>   /* for random */
 
 // Made by Jordan Perry
-// 16/06/2020 - 17/06/2020
+// 16/06/2020 - 18/06/2020
 
 // -- How To Run --
 // Install ncurses:
@@ -35,20 +35,15 @@
 
 #define len 20 // length of grid
 #define wid 10 // width of grid
-#define nextLen 6 // how many next tetriminos are shown
-#define dropTime 5000 // time it takes for each tetromino to fall, in microseconds
-#define lockDelay 10000 // lock delay time, in microseconds
+#define nextLen 6 // how many next tetrominoes are shown
+#define dropTime 20000 // time it takes for each tetromino to fall, in microseconds
+                      // could not find a good standard for this, so adjust as needed
+#define lockDelay 10000 // lock delay time, in microseconds.
+                        // it doesn't look like microsecond though, so I don't know.
+                        // the standard is 1 second lock dela, and I timed this to about a second.
+#define specialLineValues 1 // search for "line values" using ctrl+f on https://tetris.fandom.com/wiki/Tetris_Guideline
 
 // End of configuration
-
-int w, h; // width and height of terminal screen
-char grid[wid][len];
-// alright, this will be more simple than snake.
-// the grid buffer goes from left to right, top to bottom.
-// the buffer will store the type of tetrominoes as integers.
-// see tetrominoes below.
-int next[nextLen];
-// next is the same, uses tetrominoes defined below.
 
 const char tetrominoes[] = {'I', 'J', 'L', 'O', 'S', 'T', 'Z'}; // contains all tetrominoes
 
@@ -96,6 +91,15 @@ const int tetShape[sizeof tetrominoes][3][2] = {
 // they are in the same order as the other array above.
 // remember that x goes right, and y goes down.
 
+int w, h; // width and height of terminal screen
+char grid[wid][len];
+// alright, this will be more simple than snake.
+// the grid buffer goes from left to right, top to bottom.
+// the buffer will store the type of tetrominoes as integers.
+// see tetrominoes below.
+int next[nextLen];
+// next is the same, uses tetrominoes defined below.
+
 
 int order[] = {0, 1, 2, 3, 4, 5, 6, 7}; // order of tetrominoes, will be shuffled.
 int orderCount; // current place of order, array reshuffles when you go over the max.
@@ -104,17 +108,28 @@ int cur; // current tetromino
 int dir; // direction of tetromino, range of 0-3
 int tX, tY; // position of tetromino
 int timeToDrop; // time until tetromino drops, in microseconds.
-int blocks[4][2]; // contains other parts of tetrimino, ignoring center.
+int blocks[4][2]; // contains other parts of tetromino, ignoring center.
 int ghostOffset; // ghost offset
 int lD = 0; // boolean, for lock delay.
-int hold; // hold tetrimino
+int hold; // hold tetromino
 int holdCooldown; // if hold needs to cool down
+
+int level = 1; // which level you are currently on
+int lines; // progress towards your next level
+int totalLines; // total lines completed
+
+// these just count the types of line clears you got
+int single;
+int doubleCount;
+int triple;
+int tetris;
 
 int finished; // variable used to check if a loop is finished or not
 
 WINDOW *gameWin; // the game window
 WINDOW *nextWin; // next tetrominoes
 WINDOW *holdWin; // shows hold
+WINDOW *statsWin; // shows stats, such as level and lines
 
 int x, y; // temporary variables
 
@@ -133,13 +148,13 @@ void shuffle(int *array, size_t n) // copied from https://stackoverflow.com/ques
     }
 }
 
-int getTetromino(int d, int t, int blocks[4][2]) { // returns the other 3 tetromino blocks when given the center and type of tetrimino.
+int getTetromino(int d, int t, int blocks[4][2]) { // returns the other 3 tetromino blocks when given the center and type of tetromino.
   blocks[3][0] = 0; // ok, change my mind
-  blocks[3][1] = 0; // we are returning all the blocks of the tetrimino :p
+  blocks[3][1] = 0; // we are returning all the blocks of the tetromino :p
   for (int i = 0; i < 3; i++) { // direction handler
     int xC = 1;
     int yC = 1;
-    if (tetrominoes[t] != 'O') { // square tetriminoes don't rotate.
+    if (tetrominoes[t] != 'O') { // square tetrominoes don't rotate.
       if (d == 1 || d == 2) {
         yC = -1;
       }
@@ -213,6 +228,11 @@ int popNext() {
   return pop; // finally, return tetromino
 }
 
+void wprintCenter(WINDOW *win, char *s, int w, int h, int offset) { // prints text at center of screen
+  wmove(win, (h / 2) + offset, (w - strlen(s)) / 2);
+  wprintw(win, s);
+}
+
 void findGhost() {
   ghostOffset = 0;
   finished = 0;
@@ -235,9 +255,60 @@ void findGhost() {
   ghostOffset--;
 
   if (ghostOffset == -1 && tY < 3) { // game over
+    char buf[wid];
+    werase(gameWin);
+    wattron(gameWin, COLOR_PAIR(8));
+    box(gameWin, 0, 0); // I need those cool borders
+    wprintCenter(gameWin, "-STATS-", wid+2, len+2, -10);
+    wprintCenter(gameWin, "Total", wid+2, len+2, -8);
+    wprintCenter(gameWin, "Lines", wid+2, len+2, -7);
+    sprintf(buf, "%d", totalLines);
+    wprintCenter(gameWin, buf, wid+2, len+2, -6);
+    wprintCenter(gameWin, "Single", wid+2, len+2, -4);
+    sprintf(buf, "%d", single);
+    wprintCenter(gameWin, buf, wid+2, len+2, -3);
+    wprintCenter(gameWin, "Double", wid+2, len+2, -1);
+    sprintf(buf, "%d", doubleCount);
+    wprintCenter(gameWin, buf, wid+2, len+2, 0);
+    wprintCenter(gameWin, "Triple", wid+2, len+2, 2);
+    sprintf(buf, "%d", triple);
+    wprintCenter(gameWin, buf, wid+2, len+2, 3);
+    wprintCenter(gameWin, "Tetris", wid+2, len+2, 5);
+    sprintf(buf, "%d", tetris);
+    wprintCenter(gameWin, buf, wid+2, len+2, 6);
+
+    wattron(gameWin, A_STANDOUT);
+    wprintCenter(gameWin, "EXIT", wid+2, len+2, 8);
+
+    wmove(gameWin, 0, 0);
+
+    wrefresh(gameWin);
+
+    while (getch() != '\n'){}; // wait for enter to be pressed
     endwin();
     exit(0);
   }
+}
+
+void updateStats() {
+  char buf[6];
+  werase(statsWin);
+
+  wmove(statsWin, 0, 2);
+  wprintw(statsWin, "LEVEL");
+
+  sprintf(buf, "%d", level);
+  wmove(statsWin, 2, 7 - strlen(buf));
+  wprintw(statsWin, buf);
+
+  wmove(statsWin, 4, 2);
+  wprintw(statsWin, "LINES");
+
+  sprintf(buf, "%d/%d", lines, level * 5);
+  wmove(statsWin, 6, 7 - strlen(buf));
+  wprintw(statsWin, buf);
+
+  wrefresh(statsWin);
 }
 
 void updateHold() {
@@ -265,6 +336,33 @@ void updateHold() {
   wrefresh(holdWin);
 }
 
+int collision() { // check for collision
+  getTetromino(dir, cur, blocks);
+
+  for (int i = 0; i < 4; i++) { // grid check
+    x = blocks[i][0] + tX;
+    y = blocks[i][1] + tY;
+
+    if (x < 0) { // left check
+      return 1;
+    }
+
+    if (x >= wid) { // right check
+      return 1;
+    }
+
+    if (y >= len) { // bottom collision check
+      return 1;
+    }
+
+    if (grid[x][y] != 0 && y > 0) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 void hdrop() { // hard drop function
   holdCooldown = 0; // reset hold
   dir = 0;
@@ -279,10 +377,10 @@ void hdrop() { // hard drop function
 
   cur = popNext();
 
-  tX = wid / 2 - 1;
-  tY = 0;
+  tX = wid / 2 - 1; // reset x
+  tY = 0; // and y position
 
-  int linesCleared; // number of lines cleared
+  int linesCleared = 0; // number of lines cleared
 
   for (int y = 0; y < len; y++) { // loop to find cleared lines
     int success = 1;
@@ -293,20 +391,75 @@ void hdrop() { // hard drop function
       }
     }
     if (success) {
-      for (int rY = y; rY > 0; rY--) {
+      for (int rY = y; rY > 0; rY--) { // loop to clear lines
         for (int rX = 0; rX < wid; rX++) {
           grid[rX][rY] = grid[rX][rY-1];
         }
       }
+      for (int rX = 0; rX < wid; rX++) { // clear top row
+        grid[rX][0] = 0;
+      }
+      linesCleared++;
     }
+  }
+
+  if (linesCleared > 0) {
+    totalLines += linesCleared;
+
+    switch (linesCleared) {
+      case 1:
+        single++;
+        break;
+      case 2:
+        doubleCount++;
+        break;
+      case 3:
+        triple++;
+        break;
+      case 4:
+        tetris++;
+        break;
+    }
+
+    if (specialLineValues) {
+      switch (linesCleared) {
+        case 1:
+          lines += 1;
+          break;
+        case 2:
+          lines += 3;
+          break;
+        case 3:
+          lines += 5;
+          break;
+        case 4:
+          lines += 8;
+          break;
+      }
+    } else {
+      lines += linesCleared;
+    }
+
+    while (lines >= level * 5) {
+      lines = lines - (level * 5);
+      level++;
+    }
+
+    updateStats();
   }
 }
 
-void sdrop() { // soft drop function
+void sdrop(int a) { // soft drop function
   if (lD) {
-    hdrop();
+    if (a) {
+      hdrop();
+    }
   } else {
     tY++;
+
+    if (collision()) {
+      tY--;
+    }
 
     findGhost();
 
@@ -317,30 +470,87 @@ void sdrop() { // soft drop function
   }
 }
 
+void resetLockDelay() {
+  findGhost();
+
+  if (ghostOffset > 0 && lD) {
+    lD = 0;
+    timeToDrop = dropTime / level;
+  }
+}
+
+int LURotCheck() { // left up right rotation check
+  // rotationg a tetromino can move the tetromino's position.
+  // this check is used to see if it is possible to move a pieces position left, up, or down upon rotation.
+  int tet = tetrominoes[cur]; // short for tetromino
+  if (tet != 'O') { // squares don't rotate
+    int moveAmount = 1;
+    if (tet == 'I') {
+      moveAmount = 2;
+    }
+    for (int i = 0; i < moveAmount; i++) { // left check
+      tX -= 1;
+      if (!collision()) break;
+    }
+    if (collision()) {
+      tX += moveAmount; // undo
+      for (int i = 0; i < moveAmount; i++) { // right check
+        tX += 1;
+        if (!collision()) break;
+      }
+      if (collision()) {
+        tX -= moveAmount; // undo
+        for (int i = 0; i < moveAmount; i++) { // top check
+          tY -= 1;
+          if (!collision()) break;
+        }
+        if (collision()) {
+          tY += moveAmount; // undo
+          return 1;
+        }
+      }
+    }
+    return 0;
+  }
+}
+
 void processKeys() {
   int input = getch();
-  int reverseRotate = 0; // if rotated, how to reverse rotate
 
   if (input == rotate1 || input == rotate2) { // rotate tetromino
     dir = (dir + 1) % 4;
-    reverseRotate = 3;
+    if (collision() && LURotCheck()) {
+      dir = (dir + 3) % 4;
+    }
+    resetLockDelay();
   }
 
   if (input == rrotate) {
     dir = (dir + 3) % 4;
-    reverseRotate = 1;
+    if (collision() && LURotCheck()) {
+      dir = (dir + 1) % 4;
+    }
+    resetLockDelay();
   }
 
   if (input == left) { // go left
     tX--;
+    if (collision()) {
+      tX++;
+    }
+    resetLockDelay();
   }
 
   if (input == right) { // go right
     tX++;
+    if (collision()) {
+      tX--;
+    }
+    resetLockDelay();
   }
 
   if (input == softdrop) {
-    sdrop();
+    sdrop(0);
   }
 
   if (input == harddrop) {
@@ -352,6 +562,10 @@ void processKeys() {
       int swap; // temporary swap variable
       swap = hold;
       hold = cur + 1;
+
+      tX = wid / 2 - 1; // reset x
+      tY = 0; // and y position
+
       if (swap == 0) {
         cur = popNext();
       } else {
@@ -362,37 +576,12 @@ void processKeys() {
     }
   }
 
-  for (int i = 0; i < 4; i++) { // grid check
-    x = blocks[i][0] + tX;
-    y = blocks[i][1] + tY;
-
-    if (x < 0) { // left check
-      tX++;
-    }
-
-    if (x > wid - 1) { // right check
-      tX--;
-    }
-/*
-    if (grid[x][y] != 0) {
-      if (input == left) {
-        tX++;
-      } else if (input == right) {
-        tX--;
-      } else {
-
-      }
-    }*/
-  }
-
   if (timeToDrop <= 0) { // soft drop
-    timeToDrop = dropTime;
-    sdrop();
+    timeToDrop = dropTime / level;
+    sdrop(1);
   } else {
     timeToDrop--;
   }
-
-  //if (input == )
 }
 
 void drawGame() {
@@ -479,9 +668,10 @@ int main() {
 
     gameWin = newwin(len + 2, wid + 2, (h-len) / 2, (w-wid) / 2);
     nextWin = newwin(nextLen * 4 + 4, 6, (h-len) / 2 - 1, (w+wid) / 2 + 3);
-    holdWin = newwin(10, 6, (h-len) / 2, (w-wid) / 2 - 7);
+    holdWin = newwin(10, 6, (h-len) / 2, (w-wid) / 2 - 8);
+    statsWin = newwin(8, 7, (h+len) / 2 - 6, (w-wid) / 2 - 8);
 
-    timeToDrop = dropTime; // init timeToDrop
+    timeToDrop = dropTime / level;
     shuffle(order, 7); // shuffle order
 
     for (int i = 0; i < nextLen; i++) { // fill next array
@@ -491,6 +681,7 @@ int main() {
     getch(); // first run of getch, to make sure nothing is cleared for no reason.
 
     updateHold();
+    updateStats();
 
     cur = popNext(); // get current tetromino
 
