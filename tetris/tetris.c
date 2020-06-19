@@ -647,7 +647,7 @@ int main() {
 
   getmaxyx(stdscr, h, w); // get width and height of screen
 
-  if (w < wid + 3 || h < len + 3) {
+  if (w < wid + 13 || h < len + 4) {
     printCenter("Screen too small!", -1);
     printCenter("Press any key to quit", 1);
     getch(); // wait for input
