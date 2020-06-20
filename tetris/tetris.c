@@ -401,9 +401,6 @@ void hdrop() { // hard drop function
           grid[rX][rY] = grid[rX][rY-1];
         }
       }
-      for (int rX = 0; rX < wid; rX++) { // clear top row
-        grid[rX][0] = 0;
-      }
       linesCleared++;
     }
   }
