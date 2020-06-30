@@ -13,7 +13,7 @@
 // Debian: sudo apt-get install libncurses5-dev libncursesw5-dev
 // Red Hat: sudo yum install ncurses-devel ncurses
 // Compile binary:
-// gcc -lncurses tetris.c -o tetris
+// gcc tetris.c -o tetris -lncurses
 
 // You can edit the configuration below. Be sure to compile again after making your changes.
 // The default configuration is from the Tetris Standard.

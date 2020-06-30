@@ -24,7 +24,7 @@ sudo yum install ncurses-devel ncurses
 Then, to compile the binary, you can use this command:
 
 ```
-gcc -lncurses snake.c -o snake
+gcc snake.c -o snake -lncurses
 ```
 
 You can then execute the binary and play! You can control the snake by using the arrow or WASD keys.

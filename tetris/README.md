@@ -26,7 +26,7 @@ sudo yum install ncurses-devel ncurses
 Then, to compile the binary, you can use this command:
 
 ```
-gcc -lncurses tetris.c -o tetris
+gcc tetris.c -o tetris -lncurses
 ```
 
 There is some configuration you can edit in the source file. (The original is from the Tetris Guidelines)

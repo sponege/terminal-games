@@ -13,7 +13,7 @@ After you install that, you can compile all the games using gcc.
 This is what the command should look like:
 
 ```
-gcc -lncurses game.c -o game
+gcc game.c -o game -lncurses
 ```
 
 After you compile the program, all you have to do is run it and enjoy the game!
