@@ -258,41 +258,6 @@ void findGhost() {
   }
 
   ghostOffset--;
-
-  if (ghostOffset == -1 && tY < 3) { // game over
-    char buf[wid];
-    werase(gameWin);
-    wattron(gameWin, COLOR_PAIR(8));
-    box(gameWin, 0, 0); // I need those cool borders
-    wprintCenter(gameWin, "-STATS-", wid+2, len+2, -10);
-    wprintCenter(gameWin, "Total", wid+2, len+2, -8);
-    wprintCenter(gameWin, "Lines", wid+2, len+2, -7);
-    sprintf(buf, "%d", totalLines);
-    wprintCenter(gameWin, buf, wid+2, len+2, -6);
-    wprintCenter(gameWin, "Single", wid+2, len+2, -4);
-    sprintf(buf, "%d", single);
-    wprintCenter(gameWin, buf, wid+2, len+2, -3);
-    wprintCenter(gameWin, "Double", wid+2, len+2, -1);
-    sprintf(buf, "%d", doubleCount);
-    wprintCenter(gameWin, buf, wid+2, len+2, 0);
-    wprintCenter(gameWin, "Triple", wid+2, len+2, 2);
-    sprintf(buf, "%d", triple);
-    wprintCenter(gameWin, buf, wid+2, len+2, 3);
-    wprintCenter(gameWin, "Tetris", wid+2, len+2, 5);
-    sprintf(buf, "%d", tetris);
-    wprintCenter(gameWin, buf, wid+2, len+2, 6);
-
-    wattron(gameWin, A_STANDOUT);
-    wprintCenter(gameWin, "EXIT", wid+2, len+2, 8);
-
-    wmove(gameWin, 0, 0);
-
-    wrefresh(gameWin);
-
-    while (getch() != '\n'){}; // wait for enter to be pressed
-    endwin(); // end window
-    exit(0); // exit
-  }
 }
 
 void updateStats() {
@@ -368,6 +333,41 @@ int collision() { // check for collision
   return 0;
 }
 
+void gameOver() {
+  char buf[wid];
+  werase(gameWin);
+  wattron(gameWin, COLOR_PAIR(8));
+  box(gameWin, 0, 0); // I need those cool borders
+  wprintCenter(gameWin, "-STATS-", wid+2, len+2, -10);
+  wprintCenter(gameWin, "Total", wid+2, len+2, -8);
+  wprintCenter(gameWin, "Lines", wid+2, len+2, -7);
+  sprintf(buf, "%d", totalLines);
+  wprintCenter(gameWin, buf, wid+2, len+2, -6);
+  wprintCenter(gameWin, "Single", wid+2, len+2, -4);
+  sprintf(buf, "%d", single);
+  wprintCenter(gameWin, buf, wid+2, len+2, -3);
+  wprintCenter(gameWin, "Double", wid+2, len+2, -1);
+  sprintf(buf, "%d", doubleCount);
+  wprintCenter(gameWin, buf, wid+2, len+2, 0);
+  wprintCenter(gameWin, "Triple", wid+2, len+2, 2);
+  sprintf(buf, "%d", triple);
+  wprintCenter(gameWin, buf, wid+2, len+2, 3);
+  wprintCenter(gameWin, "Tetris", wid+2, len+2, 5);
+  sprintf(buf, "%d", tetris);
+  wprintCenter(gameWin, buf, wid+2, len+2, 6);
+
+  wattron(gameWin, A_STANDOUT);
+  wprintCenter(gameWin, "EXIT", wid+2, len+2, 8);
+
+  wmove(gameWin, 0, 0);
+
+  wrefresh(gameWin);
+
+  while (getch() != '\n'){}; // wait for enter to be pressed
+  endwin(); // end window
+  exit(0); // exit
+}
+
 void hdrop() { // hard drop function
   holdCooldown = 0; // reset hold
   dir = 0;
@@ -375,6 +375,9 @@ void hdrop() { // hard drop function
   findGhost();
 
   for (int i = 0; i < 4; i++) {
+    if (y < 1) {
+      gameOver();
+    }
     x = blocks[i][0] + tX;
     y = blocks[i][1] + tY + ghostOffset;
     grid[x][y] = cur + 1; // draw tetromino to grid
