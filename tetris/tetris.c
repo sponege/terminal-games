@@ -359,8 +359,6 @@ void gameOver() {
   wattron(gameWin, A_STANDOUT);
   wprintCenter(gameWin, "EXIT", wid+2, len+2, 8);
 
-  wmove(gameWin, 0, 0);
-
   wrefresh(gameWin);
 
   while (getch() != '\n'){}; // wait for enter to be pressed
@@ -658,6 +656,7 @@ int main() {
     noecho(); // also, don't echo output
     keypad(stdscr, TRUE); // I'm also using arrow keys.
     start_color(); // initialize colors
+    curs_set(0); // hides cursor
 
     init_color(8, 700, 500, 0); // I'm using 8 as orange
     init_color(9, 500, 500, 500); // I need a gray as well.
