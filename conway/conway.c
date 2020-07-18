@@ -130,6 +130,7 @@ int main(int argc, char *argv[]) {
       refresh();
     }
   } else {
+    // generate cells randomly
     int randomNum = rand();
     int i;
 
@@ -149,11 +150,13 @@ int main(int argc, char *argv[]) {
     grid2[i] = grid[i]; // init grid 2
   }
 
-  while (1) {
-    t = time(0);
+  while (getch() != 'q') { // q to exit
+    t = time(0); // used to regulate time
     drawCells();
     refresh();
     gameOfLife();
-    usleep(frameTime - (time(0) - t));
+    usleep(frameTime - (time(0) - t)); // the longer the execution time, the shorter the sleep time. it makes the timing consistent.
   }
+
+  endwin(); // call before exiting to restore terminal settings
 }
