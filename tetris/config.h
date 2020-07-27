@@ -1,5 +1,5 @@
 // You can edit the configuration below. Be sure to compile again after making your changes.
-// The default configuration is from the Tetris Standard.
+// The default configuration is from the Tetris Guidelines.
 // https://tetris.fandom.com/wiki/Tetris_Guideline
 
 // Keyboard configuration
@@ -8,6 +8,7 @@
 #define rotate1 KEY_UP
 #define rotate2 'x'
 #define rrotate 'z' // Rotate counterclockwise. Cannot detect control, sorry!
+#define rotate180 'a'
 #define left KEY_LEFT
 #define right KEY_RIGHT
 #define softdrop KEY_DOWN

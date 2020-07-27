@@ -496,41 +496,34 @@ void processKeys() {
       dir = (dir + 3) % 4;
     }
     resetLockDelay();
-  }
-
-  if (input == rrotate) {
+  } else if (input == rrotate) {
     dir = (dir + 3) % 4;
     if (collision() && LURotCheck()) {
       dir = (dir + 1) % 4;
     }
     resetLockDelay();
-  }
-
-  if (input == left) { // go left
+  } else if (input == rotate180) { // rotate tetromino 180 degrees
+    dir = (dir + 2) % 4;
+    if (collision() && LURotCheck()) {
+      dir = (dir + 2) % 4;
+    }
+  } else if (input == left) { // go left
     tX--;
     if (collision()) {
       tX++;
     }
     resetLockDelay();
-  }
-
-  if (input == right) { // go right
+  } else if (input == right) { // go right
     tX++;
     if (collision()) {
       tX--;
     }
     resetLockDelay();
-  }
-
-  if (input == softdrop) {
+  } else if (input == softdrop) {
     sdrop(0);
-  }
-
-  if (input == harddrop) {
+  } else if (input == harddrop) {
     hdrop();
-  }
-
-  if (input == holdKey) {
+  } else if (input == holdKey) {
     if (!holdCooldown) {
       int swap; // temporary swap variable
       swap = hold;
