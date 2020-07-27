@@ -22,4 +22,6 @@ After you compile the program, all you have to do is run it and enjoy the game!
 ./game
 ```
 
+There's some configuration you can modify for each game in `config.h`. Be sure to recompile your game for changes to take effect.
+
 Yes, I know there's something called `conio.h` that can be used on windows, and I could have just used that. But I hate windows, so sue me.

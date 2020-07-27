@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>   /* for random */
+#include "config.h" /* user configuration */
 
 // Made by Jordan Perry
 // 17/07/2020
@@ -14,10 +15,6 @@
 // Red Hat: sudo yum install ncurses-devel ncurses
 // Compile binary:
 // gcc conway.c -o conway -lncurses
-
-// Configuration is below
-
-#define frameTime 100000 // time between each frame
 
 int w, h; // width and height of terminal screen
 int edit; // edit mode is on?
