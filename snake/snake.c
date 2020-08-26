@@ -46,27 +46,29 @@ void moveFood() {
 void changeDir() {
   int oldDir = dir;
   int input = getch();
-  if (alive == 1) {
-    if (input == 'w' || input == KEY_UP) {
-      dir = 3;
-    } else if (input == 'a' || input == KEY_LEFT) {
-      dir = 2;
-    } else if (input == 's' || input == KEY_DOWN) {
-      dir = 1;
-    } else if (input == 'd' || input == KEY_RIGHT) {
-      dir = 0;
-    }
-    if (dir + 2 == oldDir || dir - 2 == oldDir) { // you aren't allowed to go backwards
-      dir = (dir + 2) % 4;
-    }
-  } else if (input != -1 && alive == 0) {
-    if (input == KEY_HOME) {
-      endwin(); // call before exiting to restore terminal settings
-      exit(0);
-    } else {
-      alive = -1;
-    }
-  }
+	if (input != -1) {
+	  if (alive == 1) {
+	    if (input == 'w' || input == KEY_UP) {
+	      dir = 3;
+	    } else if (input == 'a' || input == KEY_LEFT) {
+	      dir = 2;
+	    } else if (input == 's' || input == KEY_DOWN) {
+	      dir = 1;
+	    } else if (input == 'd' || input == KEY_RIGHT) {
+	      dir = 0;
+	    }
+	    if (dir + 2 == oldDir || dir - 2 == oldDir) { // you aren't allowed to go backwards
+	      dir = (dir + 2) % 4;
+	    }
+	  } else if (alive == 0) {
+	    if (input == 'q') {
+	      endwin(); // call before exiting to restore terminal settings
+	      exit(0);
+	    } else {
+	      alive = -1;
+	    }
+	  }
+	}
 }
 
 void moveSnake() {
@@ -86,21 +88,6 @@ void moveSnake() {
       break;
     case 3: // up
       ptr[1]--; // y decrement
-  }
-}
-
-void checkForDeath() {
-  if (ptr[0] < 2 || ptr[0] > w - 3 || ptr[1] < 2 || ptr[1] > h - 3) { // if head touches wall
-    alive = 0; // you dead bro
-  } else {
-    for (int i = 0; i < (len / 2) - 1; i++) {
-      if (ptr[0] == ptr[len-(i*2)-2] && ptr[1] == ptr[len-(i*2)-1]) { // if head is touching body
-        alive = 0; // you dead bro
-      }
-    }
-  }
-  if (!alive) {
-    puts("\a"); // play bell on death
   }
 }
 
@@ -144,9 +131,11 @@ void drawGame() {
 
   for (int i = 0; i < (len / 2); i++) { // draw the snake
     move(ptr[(i*2)+1], ptr[(i*2)]);
-    addch('@'); // default
-    // addch('A'+(i%26));  // alphabet snake, I like it :)
-    // addch('!'+i);  // ASCII snake
+		if (!alphabet) {
+    	addch(snake); // default snake
+		} else {
+			addch('A'+(i%26)); // alphabet snake, the snake contains the letters of the alphabet.
+		}
   }
 
   if (!alive) { // if dead
@@ -155,14 +144,35 @@ void drawGame() {
     addch('X');
     printCenter("--------GAME OVER-------", -2);
     printCenter("Press Any Key To Restart", 0);
-    printCenter("Press [Home] To Quit", 2);
+    printCenter("Press Q To Quit", 2);
   }
 
   move(h - 1, 1);
   printw("Score: %d", score);
 
-  move(fY, fX); // cursor will be food :)
+  move(fY, fX); // draw food
+	addch(food);
+
   refresh();
+}
+
+void checkForDeath() {
+  if (ptr[0] < 2 || ptr[0] > w - 3 || ptr[1] < 2 || ptr[1] > h - 3) { // if head touches wall
+    alive = 0; // you dead bro
+  } else {
+    for (int i = 0; i < (len / 2) - 1; i++) {
+      if (ptr[0] == ptr[len-(i*2)-2] && ptr[1] == ptr[len-(i*2)-1]) { // if head is touching body
+        alive = 0; // you dead bro
+      }
+    }
+  }
+
+  if (!alive) {
+    puts("\a"); // play bell on death
+		drawGame();
+		usleep(100000); // delay so you don't accidentally restart the game
+		while (getch() != -1) {} // clear input
+  }
 }
 
 int main() {
@@ -171,12 +181,31 @@ int main() {
   nodelay(stdscr, TRUE); // don't want delay with getch input
   noecho(); // also, don't echo output
   keypad(stdscr, TRUE); // I also want to use arrow keys for controlling the snake
+	curs_set(0); // hides cursor
 
   srand(time(0)); // init random
 
   while (1) {
+		if (alive == -1) {
+      score = 0;
+      dir = 0;
 
-    //puts("\033[34mhuh cool \033[35mnice\033[37m");
+      len = 2;
+      ptr = realloc( ptr, len * sizeof *ptr ); // add head
+      // alright, realloc allows us to have essentially infinite memory,
+      // which is perfect for my snake game. remember to increment len
+      // as well when resizing your array. we are starting off with an
+      // array size of 2, because we start with a head. we are working
+      // with x y coordinates in the array.
+
+      getmaxyx(stdscr, h, w); // get width and height
+      ptr[0] = w / 2; // x
+      ptr[1] = h / 2; // y
+
+      moveFood(); // initialize food position
+
+      alive = 1;
+    }
 
     if (alive == 1) { // loop until exit
 
@@ -198,29 +227,12 @@ int main() {
         addCell();
         cellCount--;
       }
-    } else if (alive == -1) {
-      score = 0;
-      dir = 0;
-
-      len = 2;
-      ptr = realloc( ptr, len * sizeof *ptr ); // add head
-      // alright, realloc allows us to have essentially infinite memory,
-      // which is perfect for my snake game. remember to increment len
-      // as well when resizing your array. we are starting off with an
-      // array size of 2, because we start with a head. we are working
-      // with x y coordinates in the array.
-
-      getmaxyx(stdscr, h, w); // get width and height
-      ptr[0] = w / 2; // x
-      ptr[1] = h / 2; // y
-
-      moveFood(); // initialize food position
-
-      alive = 1;
     }
 
     changeDir();
-    drawGame();
+		if (alive == 1) {
+			drawGame();
+		}
     usleep(sleepTime);
   }
 }
