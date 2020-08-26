@@ -6,6 +6,6 @@
 #define cellAdd 10 // this is the number of cells you get when you eat food
 
 // looks
-#define snake '%'// what the snake looks like, should only be one character
+#define snake '@'// what the snake looks like, should only be one character
 #define food '$' // what the food looks like, should also be one character
 #define alphabet 0 // alphabet mode, disabled by default. the snake contains the letters of the alphabet.
