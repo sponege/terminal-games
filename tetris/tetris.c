@@ -307,7 +307,7 @@ void gameOver() {
   char buf[wid];
   werase(gameWin);
   wattron(gameWin, COLOR_PAIR(8));
-  box(gameWin, 0, 0); // I need those cool borders
+  wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
   wprintCenter(gameWin, "-STATS-", wid+2, len+2, -10);
   wprintCenter(gameWin, "Total", wid+2, len+2, -8);
   wprintCenter(gameWin, "Lines", wid+2, len+2, -7);
@@ -555,7 +555,7 @@ void drawGame() {
   werase(gameWin); // clear screen
 
   wattron(gameWin, COLOR_PAIR(8));
-  box(gameWin, 0, 0); // I need those cool borders
+  wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
 
   if (orderCount >= 7) {
     orderCount = 0;
@@ -660,7 +660,7 @@ int main() {
       char num[wid]; // for whatever reason, cannot have length of 1.
       sprintf(num, "%d", i); // format number
       werase(gameWin); // clear screen
-      box(gameWin, 0, 0); // I need those cool borders
+      wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
       wprintCenter(gameWin, num, wid+2, len+2, 0);
       wmove(gameWin, 0, 0);
       wrefresh(gameWin);
@@ -668,11 +668,13 @@ int main() {
     }
 
     werase(gameWin); // clear screen
-    box(gameWin, 0, 0); // I need those cool borders
+    wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
     wprintCenter(gameWin, "START!", wid+2, len+2, 0);
     wmove(gameWin, 0, 0);
     wrefresh(gameWin);
     sleep(1);
+
+    while (getch() != -1) {} // clear input
 
     cur = popNext(); // get current tetromino
 
