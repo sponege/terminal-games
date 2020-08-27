@@ -22,5 +22,5 @@ conway: conway/conway.c conway/config.h | $(OUT_DIR)
 clean:
 	rm -r $(OUT_DIR)
 
-install:
+install: $(OUT_DIR)
 	cp $(OUT_DIR)/* /bin
