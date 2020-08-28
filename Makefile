@@ -10,13 +10,13 @@ all: $(TARGETS) | $(OUT_DIR)
 $(OUT_DIR):
 	mkdir $@
 
-tetris: tetris/tetris.c tetris/config.h | $(OUT_DIR)
+tetris: tetris/tetris.c | $(OUT_DIR)
 	$(CC) $< -o $(OUT_DIR)/$@ $(LIBS)
 
-snake: snake/snake.c snake/config.h | $(OUT_DIR)
+snake: snake/snake.c | $(OUT_DIR)
 	$(CC) $< -o $(OUT_DIR)/$@ $(LIBS)
 
-conway: conway/conway.c conway/config.h | $(OUT_DIR)
+conway: conway/conway.c | $(OUT_DIR)
 	$(CC) $< -o $(OUT_DIR)/$@ $(LIBS)
 
 clean:
