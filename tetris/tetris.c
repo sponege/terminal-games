@@ -62,6 +62,112 @@ const int tetShape[sizeof tetrominoes][3][2] = {
 // they are in the same order as the other array above.
 // remember that x goes right, and y goes down.
 
+const int wallKickData[8][4][2] = {
+  { // 0->R
+    // 5 tests per rotation, but I only need to store four becauses the first test is always the origin
+    {-1, 0}, // x and y positions
+    {-1, 1},
+    {0, -2},
+    {-1, -2}
+  },
+  { // R->0
+    {1, 0},
+    {1, -1},
+    {0, 2},
+    {1, 2}
+  },
+  { // R->2
+    {1, 0},
+    {1, -1},
+    {0, 2},
+    {1, 2}
+  },
+  { // 2->R
+    {-1, 0},
+    {-1, 1},
+    {0, -2},
+    {-1, -2}
+  },
+  { // 2->L
+    {1, 0},
+    {1, 1},
+    {0, -2},
+    {1, -2}
+  },
+  { // L->2
+    {-1, 0},
+    {-1, -1},
+    {0, 2},
+    {-1, 2}
+  },
+  { // L->0
+    {-1, 0},
+    {-1, -1},
+    {0, 2},
+    {-1, 2}
+  },
+  { // 0->L
+    {1, 0},
+    {1, 1},
+    {0, -2},
+    {1, -2}
+  }
+};
+
+const int stickKickData[8][4][2] = { // for I tetromino
+  { // 0->R
+    {-2, 0},
+    {1, 0},
+    {-2, -1},
+    {1, 2}
+  },
+  { // R->0
+    {2, 0},
+    {-1, 0},
+    {2, 1},
+    {-1, -2}
+  },
+  { // R->2
+    {-1, 0},
+    {2, 0},
+    {-1, 2},
+    {2, -1}
+  },
+  { // 2->R
+    {1, 0},
+    {-2, 0},
+    {1, -2},
+    {-2, 1}
+  },
+  { // 2->L
+    {2, 0},
+    {-1, 0},
+    {2, 1},
+    {-1, -2}
+  },
+  { // L->2
+    {-2, 0},
+    {1, 0},
+    {-2, -1},
+    {1, 2}
+  },
+  { // L->0
+    {1, 0},
+    {-2, 0},
+    {1, -2},
+    {-2, 1}
+  },
+  { // 0->L
+    {-1, 0},
+    {2, 0},
+    {-1, 2},
+    {2, -1}
+  }
+};
+
+// wall kick constants, used to check for wall kicks
+// see https://tetris.wiki/Super_Rotation_System#Wall_Kicks for more info
+
 int w, h; // width and height of terminal screen
 char grid[wid][len];
 // alright, this will be more simple than snake.
@@ -452,39 +558,37 @@ void resetLockDelay() {
   }
 }
 
-int LURotCheck() { // left up right rotation check
-  // rotationg a tetromino can move the tetromino's position.
-  // this check is used to see if it is possible to move a pieces position left, up, or down upon rotation.
-  int tet = tetrominoes[cur]; // short for tetromino
-  if (tet != 'O') { // squares don't rotate
-    int moveAmount = 1;
-    if (tet == 'I') {
-      moveAmount = 2;
-    }
-    for (int i = 0; i < moveAmount; i++) { // left check
-      tX -= 1;
-      if (!collision()) break;
-    }
-    if (collision()) {
-      tX += moveAmount; // undo
-      for (int i = 0; i < moveAmount; i++) { // right check
-        tX += 1;
-        if (!collision()) break;
-      }
-      if (collision()) {
-        tX -= moveAmount; // undo
-        for (int i = 0; i < moveAmount; i++) { // top check
-          tY -= 1;
-          if (!collision()) break;
-        }
-        if (collision()) {
-          tY += moveAmount; // undo
-          return 1;
-        }
-      }
-    }
-    return 0;
+int lookupKickData(int dirTurn, int test, int xory) {
+  // helper function for wallKick()
+  // xory is short for x or y
+  // returns x/y offset from wall kick lookup table
+  if (tetrominoes[cur] == 'I') { // if rotating stick piece
+    return stickKickData[dirTurn][test][xory]; // use special stick kick data
+  } else {
+    return wallKickData[dirTurn][test][xory]; // use normal wall kick data
   }
+}
+
+int wallKick(int input) { // wall kick check
+  // checks to see if a wall kick is possible
+  // if it is, it performs the wall kick
+  // function returns 1 if the kick was successful, 0 if it was not
+
+  int dirTurn = (dir * 2) + (input == rrotate); // satisfies all cases from 0->R to 0->L
+
+  for (int i = 0; i < 4; i++) {
+    tX += lookupKickData(dirTurn, i, 0);
+    tY += lookupKickData(dirTurn, i, 1);
+
+    if (collision()) {
+      tX -= lookupKickData(dirTurn, i, 0); // undo move
+      tY -= lookupKickData(dirTurn, i, 1);
+    } else {
+      return 1; // success!
+    }
+  }
+
+  return 0; // wall kick not possible
 }
 
 void processKeys() {
@@ -492,19 +596,19 @@ void processKeys() {
 
   if (input == rotate1 || input == rotate2) { // rotate tetromino
     dir = (dir + 1) % 4;
-    if (collision() && LURotCheck()) {
+    if (collision() && !wallKick(input)) { // if there's a collision and a wall kick isn't possible
       dir = (dir + 3) % 4;
     }
     resetLockDelay();
-  } else if (input == rrotate) {
+  } else if (input == rrotate) { // rotate tetromino in reverse
     dir = (dir + 3) % 4;
-    if (collision() && LURotCheck()) {
+    if (collision() && !wallKick(input)) {
       dir = (dir + 1) % 4;
     }
     resetLockDelay();
   } else if (input == rotate180) { // rotate tetromino 180 degrees
     dir = (dir + 2) % 4;
-    if (collision() && LURotCheck()) {
+    if (collision()) { // nothing in guidelines about 180 rotation wall kick
       dir = (dir + 2) % 4;
     }
   } else if (input == left) { // go left
