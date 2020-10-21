@@ -618,7 +618,7 @@ void processKeys() {
     }
     resetLockDelay();
   } else if (input == rotate180) { // rotate tetromino 180 degrees
-    for (int i = 0; i < 2; i++) { // rotating tetromino 90 degrees twice is the same ad rotating a tetromino 180 degrees
+    for (int i = 0; i < 2; i++) { // rotating tetromino 90 degrees twice is the same as rotating a tetromino 180 degrees
       dir = (dir + 1) % 4;
       if (collision() && !wallKick(input)) {
         dir = (dir + 3) % 4;
@@ -758,7 +758,7 @@ int main() {
     nextWin = newwin(nextLen * 4 + 4, 6, (h-len) / 2 - 1, (w+wid) / 2 + 3);
     holdWin = newwin(10, 6, (h-len) / 2, (w-wid) / 2 - 8);
     statsWin = newwin(8, 7, (h+len) / 2 - 6, (w-wid) / 2 - 8);
-    lineClearWin = newwin(1, wid + 2, ((h-len) / 2) - 1, (w-wid) / 2);
+    lineClearWin = newwin(1, w, ((h-len) / 2) + len + 3, 1);
 
     timeToDrop = dropTime / level;
     shuffle(order, 7); // shuffle order
