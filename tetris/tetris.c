@@ -635,6 +635,7 @@ void processKeys() {
 
       tX = wid / 2 - 1; // reset x
       tY = 0; // and y position
+      dir = 0; // and rotation
       lD = 0; // reset lock delay because we aren't touching ground anymore.
 
       if (swap == 0) {
