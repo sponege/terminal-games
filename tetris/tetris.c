@@ -597,7 +597,7 @@ void processKeys() {
   if (input == rotate1 || input == rotate2) { // rotate tetromino
     dir = (dir + 1) % 4;
     if (collision() && !wallKick(input)) { // if there's a collision and a wall kick isn't possible
-      dir = (dir + 3) % 4;
+      dir = (dir + 3) % 4; // undo rotation
     }
     resetLockDelay();
   } else if (input == rrotate) { // rotate tetromino in reverse
@@ -607,10 +607,14 @@ void processKeys() {
     }
     resetLockDelay();
   } else if (input == rotate180) { // rotate tetromino 180 degrees
-    dir = (dir + 2) % 4;
-    if (collision()) { // nothing in guidelines about 180 rotation wall kick
-      dir = (dir + 2) % 4;
+    for (int i = 0; i < 2; i++) { // rotating tetromino 90 degrees twice is the same ad rotating a tetromino 180 degrees
+      dir = (dir + 1) % 4;
+      if (collision() && !wallKick(input)) {
+        dir = (dir + 3) % 4;
+        break;
+      }
     }
+    resetLockDelay();
   } else if (input == left) { // go left
     tX--;
     if (collision()) {
