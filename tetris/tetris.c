@@ -207,6 +207,7 @@ WINDOW *gameWin; // the game window
 WINDOW *nextWin; // next tetrominoes
 WINDOW *holdWin; // shows hold
 WINDOW *statsWin; // shows stats, such as level and lines
+WINDOW *lineClearWin; // shows line clears
 
 int x, y; // temporary variables
 
@@ -484,21 +485,27 @@ void hdrop() { // hard drop function
     }
   }
 
+  werase(lineClearWin);
+
   if (linesCleared > 0) {
     totalLines += linesCleared;
 
     switch (linesCleared) {
       case 1:
         single++;
+        wprintCenter(lineClearWin, "Single", 0);
         break;
       case 2:
         doubleCount++;
+        wprintCenter(lineClearWin, "Double", 0);
         break;
       case 3:
         triple++;
+        wprintCenter(lineClearWin, "Triple", 0);
         break;
       case 4:
         tetris++;
+        wprintCenter(lineClearWin, "Tetris", 0);
         break;
     }
 
@@ -528,6 +535,8 @@ void hdrop() { // hard drop function
 
     updateStats();
   }
+
+  wrefresh(lineClearWin);
 }
 
 void sdrop(int a) { // soft drop function
@@ -749,6 +758,7 @@ int main() {
     nextWin = newwin(nextLen * 4 + 4, 6, (h-len) / 2 - 1, (w+wid) / 2 + 3);
     holdWin = newwin(10, 6, (h-len) / 2, (w-wid) / 2 - 8);
     statsWin = newwin(8, 7, (h+len) / 2 - 6, (w-wid) / 2 - 8);
+    lineClearWin = newwin(1, wid + 2, ((h-len) / 2) - 1, (w-wid) / 2);
 
     timeToDrop = dropTime / level;
     shuffle(order, 7); // shuffle order
