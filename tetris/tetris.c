@@ -309,7 +309,9 @@ int popNext() {
   return pop; // finally, return tetromino
 }
 
-void wprintCenter(WINDOW *win, char *s, int w, int h, int offset) { // prints text at center of screen
+void wprintCenter(WINDOW *win, char *s, int offset) { // prints text at center of screen
+  int w, h;
+  getmaxyx(win, h, w);
   wmove(win, (h / 2) + offset, (w - strlen(s)) / 2);
   wprintw(win, s);
 }
@@ -414,26 +416,26 @@ void gameOver() {
   werase(gameWin);
   wattron(gameWin, COLOR_PAIR(8));
   wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
-  wprintCenter(gameWin, "-STATS-", wid+2, len+2, -10);
-  wprintCenter(gameWin, "Total", wid+2, len+2, -8);
-  wprintCenter(gameWin, "Lines", wid+2, len+2, -7);
+  wprintCenter(gameWin, "-STATS-", -10);
+  wprintCenter(gameWin, "Total", -8);
+  wprintCenter(gameWin, "Lines", -7);
   sprintf(buf, "%d", totalLines);
-  wprintCenter(gameWin, buf, wid+2, len+2, -6);
-  wprintCenter(gameWin, "Single", wid+2, len+2, -4);
+  wprintCenter(gameWin, buf, -6);
+  wprintCenter(gameWin, "Single", -4);
   sprintf(buf, "%d", single);
-  wprintCenter(gameWin, buf, wid+2, len+2, -3);
-  wprintCenter(gameWin, "Double", wid+2, len+2, -1);
+  wprintCenter(gameWin, buf, -3);
+  wprintCenter(gameWin, "Double", -1);
   sprintf(buf, "%d", doubleCount);
-  wprintCenter(gameWin, buf, wid+2, len+2, 0);
-  wprintCenter(gameWin, "Triple", wid+2, len+2, 2);
+  wprintCenter(gameWin, buf, 0);
+  wprintCenter(gameWin, "Triple", 2);
   sprintf(buf, "%d", triple);
-  wprintCenter(gameWin, buf, wid+2, len+2, 3);
-  wprintCenter(gameWin, "Tetris", wid+2, len+2, 5);
+  wprintCenter(gameWin, buf, 3);
+  wprintCenter(gameWin, "Tetris", 5);
   sprintf(buf, "%d", tetris);
-  wprintCenter(gameWin, buf, wid+2, len+2, 6);
+  wprintCenter(gameWin, buf, 6);
 
   wattron(gameWin, A_STANDOUT);
-  wprintCenter(gameWin, "EXIT", wid+2, len+2, 8);
+  wprintCenter(gameWin, "EXIT", 8);
 
   wrefresh(gameWin);
 
@@ -770,7 +772,7 @@ int main() {
       sprintf(num, "%d", i); // format number
       werase(gameWin); // clear screen
       wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
-      wprintCenter(gameWin, num, wid+2, len+2, 0);
+      wprintCenter(gameWin, num, 0);
       wmove(gameWin, 0, 0);
       wrefresh(gameWin);
       sleep(1);
@@ -778,7 +780,7 @@ int main() {
 
     werase(gameWin); // clear screen
     wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
-    wprintCenter(gameWin, "START!", wid+2, len+2, 0);
+    wprintCenter(gameWin, "START!", 0);
     wmove(gameWin, 0, 0);
     wrefresh(gameWin);
     sleep(1);
