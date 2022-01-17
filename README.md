@@ -40,3 +40,15 @@ make clean
 
 
 There's some configuration you can modify for each game in `config.h`. Be sure to recompile your game for changes to take effect.
+
+For the video player:
+```
+sudo apt install libpng-dev
+sudo apt install ffmpeg
+```
+
+Then use `ffmpeg` to convert your video to several different frames.
+
+```
+ffmpeg -i astley.mp4 -vf fps=60 frames/frame%d.png
+```

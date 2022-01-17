@@ -1,7 +1,7 @@
 CC      := gcc
 LIBS    := -lncurses
 OUT_DIR := build
-TARGETS := tetris snake conway
+TARGETS := tetris snake conway video
 
 .PHONY: $(TARGETS) clean install
 
@@ -18,6 +18,9 @@ snake: snake/snake.c | $(OUT_DIR)
 
 conway: conway/conway.c | $(OUT_DIR)
 	$(CC) $< -o $(OUT_DIR)/$@ $(LIBS)
+
+video: video-player/video-player.c | $(OUT_DIR)
+	$(CC) $< -o $(OUT_DIR)/$@ $(LIBS) -lpng
 
 clean:
 	rm -r $(OUT_DIR)
