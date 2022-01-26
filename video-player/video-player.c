@@ -1,18 +1,17 @@
-#include <stdio.h>
 #include <curses.h>
-#include <unistd.h> /* for sleep */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>   /* for random */
+#include <unistd.h> /* for sleep */
 #include "config.h" /* user configuration */
-#include <png.h>
-#include <stdio.h>
 #include <errno.h>
-#include <stdarg.h>
 #include <math.h>
+#include <png.h>
+#include <stdarg.h>
+#include <stdio.h>
 
-static void
-fatal_error(const char * message, ...) {
+static void fatal_error(const char *message, ...) {
   va_list args;
   va_start(args, message);
   vfprintf(stderr, message, args);
@@ -20,28 +19,30 @@ fatal_error(const char * message, ...) {
   exit(EXIT_FAILURE);
 }
 
-int w, h; // width and height of terminal screen
-char png_file[100]; // name of file
+int console_width, console_height; // width and height of terminal screen
+char png_file[100];                // name of file
 int *avg_colors = NULL; // gets the average of all colors to be used in terminal
-int *avg_bw = NULL; // gets the average of all pixels to be used in terminal
+int *avg_bw = NULL;     // gets the average of all pixels to be used in terminal
 
 int main() {
   initscr(); // initialize ncurses
 
-  getmaxyx(stdscr, h, w); // get width and height of screen
+  getmaxyx(stdscr, console_height,
+           console_width); // get width and height of screen
 
   nodelay(stdscr, TRUE); // don't want delay with getch input
-  noecho(); // also, don't echo output
-  curs_set(0); // hides cursor
+  noecho();              // also, don't echo output
+  curs_set(0);           // hides cursor
 
   endwin(); // call before exiting to restore terminal settings
 
-  for (int i = 1; i < 1000; i++) {
+  for (int i = 1; i < NUM_FRAMES; i++) {
+    memset(png_file, 0, 100);
     sprintf(png_file, "./frames/frame%d.png", i);
 
     png_structp png_ptr;
     png_infop info_ptr;
-    FILE * fp;
+    FILE *fp;
     png_uint_32 width;
     png_uint_32 height;
     int bit_depth;
@@ -50,6 +51,7 @@ int main() {
     int compression_method;
     int filter_method;
     png_bytepp rows;
+
     fp = fopen(png_file, "rb");
     if (!fp) {
       fatal_error("Cannot open '%s': %s\n", png_file, strerror(errno));
@@ -64,116 +66,74 @@ int main() {
     }
     png_init_io(png_ptr, fp);
     png_read_png(png_ptr, info_ptr, 0, 0);
-    png_get_IHDR(png_ptr, info_ptr, & width, & height, & bit_depth, &
-      color_type, & interlace_method, & compression_method, &
-      filter_method);
+    png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
+                 &interlace_method, &compression_method, &filter_method);
     rows = png_get_rows(png_ptr, info_ptr);
-    // printf("Width is %d, height is %d\n", width, height);
-    int rowbytes;
-    rowbytes = png_get_rowbytes(png_ptr, info_ptr);
-    // printf("Row bytes = %d\n", rowbytes); // dont need to deal with this crap right now
-    avg_colors = realloc(avg_colors, ((2*w)*(3*h))*3 * sizeof *avg_colors); // braille digits are two across and and three above, dont forget about rgb
-    avg_bw = realloc(avg_colors, ((2*w)*(3*h)) * sizeof *avg_colors); // braille digits are two across and and three above
 
-    // for (int j = 0; j < w*2; j++) {
-    //   for (int k = 0; k < h*3; k++) {
-    //     int avg_r = 0;
-    //     int avg_g = 0;
-    //     int avg_b = 0;
-    //     for (int l = 0; l < (int)(height/(h*3)); l++) {
-    //       png_bytep row;
-    //       row = rows[l+(k*(int)(height/(h*3)))];
-    //       for (int m = 0; m < (int)(width/(w*2)); m++) {
-    //         png_byte pixel;
-    //         pixel = row[m+(j*(int)(width/(w*2))*3)];
-    //         avg_r += pixel;
-    //         pixel = row[m+(j*(int)(width/(w*2))*3)+1];
-    //         avg_g += pixel;
-    //         pixel = row[m+(j*(int)(width/(w*2))*3)+2];
-    //         avg_b += pixel;
-    //       }
-    //     }
-    //     avg_r /= (int)(height/(h*3)) * (int)(width/(w*2));
-    //     avg_g /= (int)(height/(h*3)) * (int)(width/(w*2));
-    //     avg_b /= (int)(height/(h*3)) * (int)(width/(w*2));
-    //     avg_colors[(3*j+(k*w))] = avg_r;
-    //     avg_colors[(3*j+(k*w))+1] = avg_g;
-    //     avg_colors[(3*j+(k*w))+2] = avg_b;
-    //     int avg_col = (avg_r + avg_g + avg_b) / 3;
-    //     avg_bw[j+(k*w)] = avg_b;
-    //   }
-    // }
+    avg_colors = realloc(avg_colors, width * height * 3 * sizeof(*avg_colors));
+    avg_bw = realloc(avg_colors, width * height * sizeof(*avg_colors));
 
-    for (int j = 0; j < w; j++) {
-      for (int k = 0; k < h; k++) {
+    fclose(fp);
+
+    int y_ppc = (int)(height / console_height); // Pixels per character
+    int x_ppc = (int)(width / console_width);   // Pixels per character
+
+    for (int char_x = 0; char_x < console_width; char_x++) {
+      for (int char_y = 0; char_y < console_height; char_y++) {
+
         int avg_r = 0;
         int avg_g = 0;
         int avg_b = 0;
-        for (int l = 0; l < (int)(height/(h)); l++) {
+
+        for (int y_off = 0; y_off < y_ppc; y_off++) {
+
           png_bytep row;
-          row = rows[l+(k*(int)(height/(h)))];
-          for (int m = 0; m < (int)(width/(w)); m++) {
+          row = rows[y_off + (char_y * y_ppc)];
+
+          for (int x_off = 0; x_off < x_ppc; x_off++) {
+
             png_byte pixel;
-            pixel = row[(m+(j*(int)(width/(w)))*3)];
+            pixel = row[(x_off + char_x * x_ppc) * 3];
             avg_r += pixel;
-            pixel = row[(m+(j*(int)(width/(w)))*3)+1];
+            pixel = row[(x_off + char_x * x_ppc) * 3 + 1];
             avg_g += pixel;
-            pixel = row[(m+(j*(int)(width/(w)))*3)+2];
+            pixel = row[(x_off + char_x * x_ppc) * 3 + 2];
             avg_b += pixel;
           }
         }
-        avg_r /= (int)(height/(h)) * (int)(width/(w));
-        avg_g /= (int)(height/(h)) * (int)(width/(w));
-        avg_b /= (int)(height/(h)) * (int)(width/(w));
-        avg_colors[(3*j+(k*w))] = avg_r;
-        avg_colors[(3*j+(k*w))+1] = avg_g;
-        avg_colors[(3*j+(k*w))+2] = avg_b;
+
+        int total_ppc = y_ppc * x_ppc;
+
+        avg_r /= total_ppc;
+        avg_g /= total_ppc;
+        avg_b /= total_ppc;
+
+        avg_colors[(char_x + (char_y * console_width) * 3)] = avg_r;
+        avg_colors[(char_x + (char_y * console_width) * 3) + 1] = avg_g;
+        avg_colors[(char_x + (char_y * console_width) * 3) + 2] = avg_b;
         int avg_col = (avg_r + avg_g + avg_b) / 3;
-        avg_bw[j+(k*w)] = avg_b;
+        avg_bw[char_x + (char_y * console_width)] = avg_col;
       }
     }
 
     printf("\e[1;1H\e[2J"); // clear screen
 
-    for (int k = 0; k < h; k++) {
-      for (int j = 0; j < w; j++) {
-        // printf("%c", 'a'+((avg_bw[j+(k*w)] & 0b1) * 1));
-        if (avg_bw[j+(k*w)] < 64) {
-		printf ("#");
-	    }
-	    else if (avg_bw[j+(k*w)] < 128) {
-		printf ("*");
-	    }
-	    else if (avg_bw[j+(k*w)] < 196) {
-		printf (".");
-	    }
-	    else {
-		printf (" ");
-	    }
+    for (int y = 0; y < console_height; y++) {
+      for (int x = 0; x < console_width; x++) {
+        // printf("%c", 'a'+((avg_bw[x+(y*console_width)])/3));
+        if (avg_bw[x + (y * console_width)] < 64) {
+          printf(" ");
+        } else if (avg_bw[x + (y * console_width)] < 128) {
+          printf(".");
+        } else if (avg_bw[x + (y * console_width)] < 196) {
+          printf("*");
+        } else {
+          printf("#");
+        }
       }
       printf("\n");
     }
-    usleep(1000);
-    // for (j = 0; j < height; j++) {
-    //   int i;
-    //   png_bytep row;
-    //   row = rows[j];
-    //   for (i = 0; i < rowbytes; i++) {
-    //     png_byte pixel;
-    //     pixel = row[i];
-    //     // if (pixel < 64) {
-    //     //   printf("##");
-    //     // } else if (pixel < 128) {
-    //     //   printf("**");
-    //     // } else if (pixel < 196) {
-    //     //   printf("..");
-    //     // } else {
-    //     //   printf("  ");
-    //     // }
-    //
-    //   }
-    //   // printf("\n");
-    // }
+    usleep(32000);
   }
   return 0;
 }
