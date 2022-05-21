@@ -168,48 +168,62 @@ const int stickKickData[8][4][2] = { // for I tetromino
 // wall kick constants, used to check for wall kicks
 // see https://tetris.wiki/Super_Rotation_System#Wall_Kicks for more info
 
+struct tetPiece {
+  int x, y; // position of tetromino
+};
+
+struct tetBoard {
+  char grid[wid][len];
+  // alright, this will be more simple than snake.
+  // the grid buffer goes from left to right, top to bottom.
+  // the buffer will store the type of tetrominoes as integers.
+  // see tetrominoes below.
+  int next[nextLen];
+  // next is the same, uses tetrominoes defined below.
+
+
+  int order[8]; // order of tetrominoes, will be shuffled.
+  int orderCount; // current place of order, array reshuffles when you go over the max.
+
+  int cur; // current tetromino
+  int dir; // direction of tetromino, range of 0-3
+  int timeToDrop; // time until tetromino drops, in microseconds.
+  int blocks[4][2]; // contains other parts of tetromino, ignoring center.
+  int ghostOffset; // ghost offset
+  int lD; // boolean, for lock delay.
+  int hold; // hold tetromino
+  int holdCooldown; // if hold needs to cool down
+
+  int level; // which level you are currently on
+  int lines; // progress towards your next level
+  int totalLines; // total lines completed
+
+  // these just count the types of line clears you got
+  int single;
+  int doubleCount;
+  int triple;
+  int tetris;
+
+  struct tetPiece piece;
+
+  WINDOW *gameWin; // the game window
+  WINDOW *nextWin; // next tetrominoes
+  WINDOW *holdWin; // shows hold
+  WINDOW *statsWin; // shows stats, such as level and lines
+  WINDOW *lineClearWin; // shows line clears 
+};
+
+struct tetBoard newBoard() {
+  struct tetBoard out = {
+    .order = {0, 1, 2, 3, 4, 5, 6, 7},
+    .lD = 0,
+    .level = 1,
+  };
+  return out;
+}
+
 int w, h; // width and height of terminal screen
-char grid[wid][len];
-// alright, this will be more simple than snake.
-// the grid buffer goes from left to right, top to bottom.
-// the buffer will store the type of tetrominoes as integers.
-// see tetrominoes below.
-int next[nextLen];
-// next is the same, uses tetrominoes defined below.
 
-
-int order[] = {0, 1, 2, 3, 4, 5, 6, 7}; // order of tetrominoes, will be shuffled.
-int orderCount; // current place of order, array reshuffles when you go over the max.
-
-int cur; // current tetromino
-int dir; // direction of tetromino, range of 0-3
-int tX, tY; // position of tetromino
-int timeToDrop; // time until tetromino drops, in microseconds.
-int blocks[4][2]; // contains other parts of tetromino, ignoring center.
-int ghostOffset; // ghost offset
-int lD = 0; // boolean, for lock delay.
-int hold; // hold tetromino
-int holdCooldown; // if hold needs to cool down
-
-int level = 1; // which level you are currently on
-int lines; // progress towards your next level
-int totalLines; // total lines completed
-
-// these just count the types of line clears you got
-int single;
-int doubleCount;
-int triple;
-int tetris;
-
-int finished; // variable used to check if a loop is finished or not
-
-WINDOW *gameWin; // the game window
-WINDOW *nextWin; // next tetrominoes
-WINDOW *holdWin; // shows hold
-WINDOW *statsWin; // shows stats, such as level and lines
-WINDOW *lineClearWin; // shows line clears
-
-int x, y; // temporary variables
 
 void shuffle(int *array, size_t n) // copied from https://stackoverflow.com/questions/6127503/shuffle-array-in-c#6127606
 {
@@ -226,7 +240,9 @@ void shuffle(int *array, size_t n) // copied from https://stackoverflow.com/ques
     }
 }
 
-int getTetromino(int d, int t, int blocks[4][2]) { // returns the other 3 tetromino blocks when given the center and type of tetromino.
+int getTetromino(int d, int t, int blocks[4][2]) { // returns the other 3 tetromino blocks when given the center and type of tetromino, and the pointer to the block array.
+  int x, y; // temporary variables
+
   blocks[3][0] = 0; // ok, change my mind
   blocks[3][1] = 0; // we are returning all the blocks of the tetromino :p
   for (int i = 0; i < 3; i++) { // direction handler
@@ -265,47 +281,47 @@ int getTetromino(int d, int t, int blocks[4][2]) { // returns the other 3 tetrom
   }
 }
 
-void updateNext() {
+void updateNext(struct tetBoard *board) {
   // draw new next blocks
 
-  werase(nextWin);
+  werase(board->nextWin);
 
-  wattron(nextWin, COLOR_PAIR(8));
+  wattron(board->nextWin, COLOR_PAIR(8));
 
-  wprintw(nextWin, "-NEXT-");
+  wprintw(board->nextWin, "-NEXT-");
 
   int nextBlock[4][2];
 
   for (int i = 0; i < nextLen; i++) { // draw next blocks
-    getTetromino(0, next[i], nextBlock);
-    wattron(nextWin, COLOR_PAIR(next[i]+1));
+    getTetromino(0, board->next[i], nextBlock);
+    wattron(board->nextWin, COLOR_PAIR(board->next[i]+1));
     for (int n = 0; n < 4; n++) {
-      wmove(nextWin, 3 + (i*4) + nextBlock[n][1], 2 + nextBlock[n][0]);
-      waddch(nextWin, tetrominoes[next[i]]);
+      wmove(board->nextWin, 3 + (i*4) + nextBlock[n][1], 2 + nextBlock[n][0]);
+      waddch(board->nextWin, tetrominoes[board->next[i]]);
     }
   }
 
-  wrefresh(nextWin);
+  wrefresh(board->nextWin);
 }
 
-int popBag() {
-  int pop = order[orderCount]; // pop tetromino from bag
-  orderCount++; // increment "stack pointer"
-  if (orderCount > 6) { // if reached end of bag
-    orderCount = 0; // reset "stack pointer"
-    shuffle(order, 7); // shuffle order
+int popBag(struct tetBoard *board) {
+  int pop = board->order[board->orderCount]; // pop tetromino from bag
+  board->orderCount++; // increment "stack pointer"
+  if (board->orderCount > 6) { // if reached end of bag
+    board->orderCount = 0; // reset "stack pointer"
+    shuffle(board->order, 7); // shuffle order
   }
   return pop;
 }
 
-int popNext() {
-  int pop = next[0]; // pop tetromino from bag
+int popNext(struct tetBoard *board) {
+  int pop = board->next[0]; // pop tetromino from bag
   for (int i = 0; i < nextLen - 1; i++) {
-    next[i] = next[i+1]; // move all tetrominoes up one
+    board->next[i] = board->next[i+1]; // move all tetrominoes up one
   }
-  next[nextLen - 1] = popBag(); // get another tetromino into next
+  board->next[nextLen - 1] = popBag(board); // get another tetromino into next
 
-  updateNext();
+  updateNext(board);
 
   return pop; // finally, return tetromino
 }
@@ -317,15 +333,17 @@ void wprintCenter(WINDOW *win, char *s, int offset) { // prints text at center o
   wprintw(win, s);
 }
 
-void findGhost() {
-  ghostOffset = 0;
-  finished = 0;
+void findGhost(struct tetBoard *board) {
+  int x, y; // temporary variables
+
+  board->ghostOffset = 0;
+  int finished = 0; // variable used to check if a loop is finished or not
 
   while (true) { // find the y offset for ghost piece
     for (int i = 0; i < 4; i++) {
-      x = blocks[i][0] + tX;
-      y = blocks[i][1] + ghostOffset + tY;
-      if (y == len || (grid[x][y] != 0 && x >= 0 && y >= 0)) {
+      x = board->blocks[i][0] + board->piece.x;
+      y = board->blocks[i][1] + board->ghostOffset + board->piece.y;
+      if (y == len || (board->grid[x][y] != 0 && x >= 0 && y >= 0)) {
         finished = 1;
         break;
       }
@@ -333,64 +351,65 @@ void findGhost() {
     if (finished) {
       break;
     }
-    ghostOffset++;
+    board->ghostOffset++;
   }
 
-  ghostOffset--;
+  board->ghostOffset--;
 }
 
-void updateStats() {
+void updateStats(struct tetBoard *board) {
   char buf[6];
-  werase(statsWin);
+  werase(board->statsWin);
 
-  wmove(statsWin, 0, 2);
-  wprintw(statsWin, "LEVEL");
+  wmove(board->statsWin, 0, 2);
+  wprintw(board->statsWin, "LEVEL");
 
-  sprintf(buf, "%d", level);
-  wmove(statsWin, 2, 7 - strlen(buf));
-  wprintw(statsWin, buf);
+  sprintf(buf, "%d", board->level);
+  wmove(board->statsWin, 2, 7 - strlen(buf));
+  wprintw(board->statsWin, buf);
 
-  wmove(statsWin, 4, 2);
-  wprintw(statsWin, "LINES");
+  wmove(board->statsWin, 4, 2);
+  wprintw(board->statsWin, "LINES");
 
-  sprintf(buf, "%d/%d", lines, level * 5);
-  wmove(statsWin, 6, 7 - strlen(buf));
-  wprintw(statsWin, buf);
+  sprintf(buf, "%d/%d", board->lines, board->level * 5);
+  wmove(board->statsWin, 6, 7 - strlen(buf));
+  wprintw(board->statsWin, buf);
 
-  wrefresh(statsWin);
+  wrefresh(board->statsWin);
 }
 
-void updateHold() {
-  werase(holdWin);
+void updateHold(struct tetBoard *board) {
+  werase(board->holdWin);
 
-  wmove(holdWin, 0, 0);
+  wmove(board->holdWin, 0, 0);
 
-  wattron(holdWin, COLOR_PAIR(8));
+  wattron(board->holdWin, COLOR_PAIR(8));
 
-  wprintw(holdWin, "-HOLD-");
+  wprintw(board->holdWin, "-HOLD-");
 
-  if (hold != 0) {
+  if (board->hold != 0) {
     int holdBlock[4][2];
-    getTetromino(0, hold-1, holdBlock);
-    wattron(holdWin, COLOR_PAIR(hold));
+    getTetromino(0, board->hold-1, holdBlock);
+    wattron(board->holdWin, COLOR_PAIR(board->hold));
     for (int n = 0; n < 4; n++) {
-      wmove(holdWin, 3 + holdBlock[n][1], 2 + holdBlock[n][0]);
-      waddch(holdWin, tetrominoes[hold-1]);
+      wmove(board->holdWin, 3 + holdBlock[n][1], 2 + holdBlock[n][0]);
+      waddch(board->holdWin, tetrominoes[board->hold-1]);
     }
   } else {
-    wmove(holdWin, 2, 1);
-    wprintw(holdWin, "None");
+    wmove(board->holdWin, 2, 1);
+    wprintw(board->holdWin, "None");
   }
 
-  wrefresh(holdWin);
+  wrefresh(board->holdWin);
 }
 
-int collision() { // check for collision
-  getTetromino(dir, cur, blocks);
+int collision(struct tetBoard *board) { // check for collision
+  getTetromino(board->dir, board->cur, board->blocks);
+  int x, y; // temporary variables
 
   for (int i = 0; i < 4; i++) { // grid check
-    x = blocks[i][0] + tX;
-    y = blocks[i][1] + tY;
+    x = board->blocks[i][0] + board->piece.x;
+    y = board->blocks[i][1] + board->piece.y;
 
     if (x < 0) { // left check
       return 1;
@@ -404,7 +423,7 @@ int collision() { // check for collision
       return 1;
     }
 
-    if (grid[x][y] != 0 && y > 0) {
+    if (board->grid[x][y] != 0 && y > 0) {
       return 1;
     }
   }
@@ -412,65 +431,67 @@ int collision() { // check for collision
   return 0;
 }
 
-void gameOver() {
+void gameOver(struct tetBoard *board) {
   char buf[wid];
-  werase(gameWin);
-  wattron(gameWin, COLOR_PAIR(8));
-  wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
-  wprintCenter(gameWin, "-STATS-", -10);
-  wprintCenter(gameWin, "Total", -8);
-  wprintCenter(gameWin, "Lines", -7);
-  sprintf(buf, "%d", totalLines);
-  wprintCenter(gameWin, buf, -6);
-  wprintCenter(gameWin, "Single", -4);
-  sprintf(buf, "%d", single);
-  wprintCenter(gameWin, buf, -3);
-  wprintCenter(gameWin, "Double", -1);
-  sprintf(buf, "%d", doubleCount);
-  wprintCenter(gameWin, buf, 0);
-  wprintCenter(gameWin, "Triple", 2);
-  sprintf(buf, "%d", triple);
-  wprintCenter(gameWin, buf, 3);
-  wprintCenter(gameWin, "Tetris", 5);
-  sprintf(buf, "%d", tetris);
-  wprintCenter(gameWin, buf, 6);
+  werase(board->gameWin);
+  wattron(board->gameWin, COLOR_PAIR(8));
+  wborder(board->gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
+  wprintCenter(board->gameWin, "-STATS-", -10);
+  wprintCenter(board->gameWin, "Total", -8);
+  wprintCenter(board->gameWin, "Lines", -7);
+  sprintf(buf, "%d", board->totalLines);
+  wprintCenter(board->gameWin, buf, -6);
+  wprintCenter(board->gameWin, "Single", -4);
+  sprintf(buf, "%d", board->single);
+  wprintCenter(board->gameWin, buf, -3);
+  wprintCenter(board->gameWin, "Double", -1);
+  sprintf(buf, "%d", board->doubleCount);
+  wprintCenter(board->gameWin, buf, 0);
+  wprintCenter(board->gameWin, "Triple", 2);
+  sprintf(buf, "%d", board->triple);
+  wprintCenter(board->gameWin, buf, 3);
+  wprintCenter(board->gameWin, "Tetris", 5);
+  sprintf(buf, "%d", board->tetris);
+  wprintCenter(board->gameWin, buf, 6);
 
-  wattron(gameWin, A_STANDOUT);
-  wprintCenter(gameWin, "EXIT", 8);
+  wattron(board->gameWin, A_STANDOUT);
+  wprintCenter(board->gameWin, "EXIT", 8);
 
-  wrefresh(gameWin);
+  wrefresh(board->gameWin);
 
   while (getch() != '\n'){}; // wait for enter to be pressed
   endwin(); // end window
   exit(0); // exit
 }
 
-void hdrop() { // hard drop function
-  holdCooldown = 0; // reset hold
-  dir = 0;
-  lD = 0;
-  findGhost();
+void hdrop(struct tetBoard *board) { // hard drop function
+  int x, y; // temporary variables
+
+  board->holdCooldown = 0; // reset hold
+  board->dir = 0;
+  board->lD = 0;
+  findGhost(board);
 
   for (int i = 0; i < 4; i++) {
     if (y < 1) {
-      gameOver();
+      gameOver(board);
     }
-    x = blocks[i][0] + tX;
-    y = blocks[i][1] + tY + ghostOffset;
-    grid[x][y] = cur + 1; // draw tetromino to grid
+    x = board->blocks[i][0] + board->piece.x;
+    y = board->blocks[i][1] + board->piece.y + board->ghostOffset;
+    board->grid[x][y] = board->cur + 1; // draw tetromino to grid
   }
 
-  cur = popNext();
+  board->cur = popNext(board);
 
-  tX = wid / 2 - 1; // reset x
-  tY = 0; // and y position
+  board->piece.x = wid / 2 - 1; // reset x
+  board->piece.y = 0; // and y position
 
   int linesCleared = 0; // number of lines cleared
 
   for (int y = 0; y < len; y++) { // loop to find cleared lines
     int success = 1;
     for (int x = 0; x < wid; x++) {
-      if (grid[x][y] == 0) {
+      if (board->grid[x][y] == 0) {
         success = 0;
         break;
       }
@@ -478,98 +499,98 @@ void hdrop() { // hard drop function
     if (success) {
       for (int rY = y; rY > 0; rY--) { // loop to clear lines
         for (int rX = 0; rX < wid; rX++) {
-          grid[rX][rY] = grid[rX][rY-1];
+          board->grid[rX][rY] = board->grid[rX][rY-1];
         }
       }
       linesCleared++;
     }
   }
 
-  werase(lineClearWin);
+  werase(board->lineClearWin);
 
   if (linesCleared > 0) {
-    totalLines += linesCleared;
+    board->totalLines += linesCleared;
 
     switch (linesCleared) {
       case 1:
-        single++;
-        wprintCenter(lineClearWin, "Single", 0);
+        board->single++;
+        wprintCenter(board->lineClearWin, "Single", 0);
         break;
       case 2:
-        doubleCount++;
-        wprintCenter(lineClearWin, "Double", 0);
+        board->doubleCount++;
+        wprintCenter(board->lineClearWin, "Double", 0);
         break;
       case 3:
-        triple++;
-        wprintCenter(lineClearWin, "Triple", 0);
+        board->triple++;
+        wprintCenter(board->lineClearWin, "Triple", 0);
         break;
       case 4:
-        tetris++;
-        wprintCenter(lineClearWin, "Tetris", 0);
+        board->tetris++;
+        wprintCenter(board->lineClearWin, "Tetris", 0);
         break;
     }
 
     if (specialLineValues) {
       switch (linesCleared) {
         case 1:
-          lines += 1;
+          board->lines += 1;
           break;
         case 2:
-          lines += 3;
+          board->lines += 3;
           break;
         case 3:
-          lines += 5;
+          board->lines += 5;
           break;
         case 4:
-          lines += 8;
+          board->lines += 8;
           break;
       }
     } else {
-      lines += linesCleared;
+      board->lines += linesCleared;
     }
 
-    while (lines >= level * 5) {
-      lines = lines - (level * 5);
-      level++;
+    while (board->lines >= board->level * 5) {
+      board->lines = board->lines - (board->level * 5);
+      board->level++;
     }
 
-    updateStats();
+    updateStats(board);
   }
 
-  wrefresh(lineClearWin);
+  wrefresh(board->lineClearWin);
 }
 
-void sdrop(int a) { // soft drop function
-  if (lD) {
+void sdrop(int a, struct tetBoard *board) { // soft drop function
+  if (board->lD) {
     if (a) {
-      hdrop();
+      hdrop(board);
     }
   } else {
-    tY++;
+    board->piece.y++;
 
-    if (collision()) {
-      tY--;
+    if (collision(board)) {
+      board->piece.y--;
     }
 
-    findGhost();
+    findGhost(board);
 
-    if (ghostOffset == 0) {
-      lD = 1;
-      timeToDrop = lockDelay;
+    if (board->ghostOffset == 0) {
+      board->lD = 1;
+      board->timeToDrop = lockDelay;
     }
   }
 }
 
-void resetLockDelay() {
-  findGhost();
+void resetLockDelay(struct tetBoard *board) {
+  findGhost(board);
 
-  if (ghostOffset > 0 && lD) {
-    lD = 0;
-    timeToDrop = dropTime / level;
+  if (board->ghostOffset > 0 && board->lD) {
+    board->lD = 0;
+    board->timeToDrop = dropTime / board->level;
   }
 }
 
-int lookupKickData(int dirTurn, int test, int xory) {
+int lookupKickData(int cur, int dirTurn, int test, int xory) {
   // helper function for wallKick()
   // xory is short for x or y
   // returns x/y offset from wall kick lookup table
@@ -580,20 +601,20 @@ int lookupKickData(int dirTurn, int test, int xory) {
   }
 }
 
-int wallKick(int input) { // wall kick check
+int wallKick(int input, struct tetBoard *board) { // wall kick check
   // checks to see if a wall kick is possible
   // if it is, it performs the wall kick
   // function returns 1 if the kick was successful, 0 if it was not
 
-  int dirTurn = (dir * 2) + (input == rrotate); // satisfies all cases from 0->R to 0->L
+  int dirTurn = (board->dir * 2) + (input == rrotate); // satisfies all cases from 0->R to 0->L
 
   for (int i = 0; i < 4; i++) {
-    tX += lookupKickData(dirTurn, i, 0);
-    tY += lookupKickData(dirTurn, i, 1);
+    board->piece.x += lookupKickData(board->cur, dirTurn, i, 0);
+    board->piece.y += lookupKickData(board->cur, dirTurn, i, 1);
 
-    if (collision()) {
-      tX -= lookupKickData(dirTurn, i, 0); // undo move
-      tY -= lookupKickData(dirTurn, i, 1);
+    if (collision(board)) {
+      board->piece.x -= lookupKickData(board->cur, dirTurn, i, 0); // undo move
+      board->piece.y -= lookupKickData(board->cur, dirTurn, i, 1);
     } else {
       return 1; // success!
     }
@@ -602,120 +623,120 @@ int wallKick(int input) { // wall kick check
   return 0; // wall kick not possible
 }
 
-void processKeys() {
+void processKeys(struct tetBoard *board) {
   int input = getch();
 
   if (input == rotate1 || input == rotate2) { // rotate tetromino
-    dir = (dir + 1) % 4;
-    if (collision() && !wallKick(input)) { // if there's a collision and a wall kick isn't possible
-      dir = (dir + 3) % 4; // undo rotation
+    board->dir = (board->dir + 1) % 4;
+    if (collision(board) && !wallKick(input, board)) { // if there's a collision and a wall kick isn't possible
+      board->dir = (board->dir + 3) % 4; // undo rotation
     }
-    resetLockDelay();
+    resetLockDelay(board);
   } else if (input == rrotate) { // rotate tetromino in reverse
-    dir = (dir + 3) % 4;
-    if (collision() && !wallKick(input)) {
-      dir = (dir + 1) % 4;
+    board->dir = (board->dir + 3) % 4;
+    if (collision(board) && !wallKick(input, board)) {
+      board->dir = (board->dir + 1) % 4;
     }
-    resetLockDelay();
+    resetLockDelay(board);
   } else if (input == rotate180) { // rotate tetromino 180 degrees
     for (int i = 0; i < 2; i++) { // rotating tetromino 90 degrees twice is the same as rotating a tetromino 180 degrees
-      dir = (dir + 1) % 4;
-      if (collision() && !wallKick(input)) {
-        dir = (dir + 3) % 4;
+      board->dir = (board->dir + 1) % 4;
+      if (collision(board) && !wallKick(input, board)) {
+        board->dir = (board->dir + 3) % 4;
         break;
       }
     }
-    resetLockDelay();
+    resetLockDelay(board);
   } else if (input == left) { // go left
-    tX--;
-    if (collision()) {
-      tX++;
+    board->piece.x--;
+    if (collision(board)) {
+      board->piece.x++;
     }
-    resetLockDelay();
+    resetLockDelay(board);
   } else if (input == right) { // go right
-    tX++;
-    if (collision()) {
-      tX--;
+    board->piece.x++;
+    if (collision(board)) {
+      board->piece.x--;
     }
-    resetLockDelay();
+    resetLockDelay(board);
   } else if (input == softdrop) {
-    sdrop(0);
+    sdrop(0, board);
   } else if (input == harddrop) {
-    hdrop();
+    hdrop(board);
   } else if (input == holdKey) {
-    if (!holdCooldown) {
+    if (!board->holdCooldown) {
       int swap; // temporary swap variable
-      swap = hold;
-      hold = cur + 1;
+      swap = board->hold;
+      board->hold = board->cur + 1;
 
-      tX = wid / 2 - 1; // reset x
-      tY = 0; // and y position
-      dir = 0; // and rotation
-      lD = 0; // reset lock delay because we aren't touching ground anymore.
+      board->piece.x = wid / 2 - 1; // reset x
+      board->piece.y = 0; // and y position
+      board->dir = 0; // and rotation
+      board->lD = 0; // reset lock delay because we aren't touching ground anymore.
 
       if (swap == 0) {
-        cur = popNext();
+        board->cur = popNext(board);
       } else {
-        cur = swap - 1;
+        board->cur = swap - 1;
       }
-      holdCooldown = 1;
-      updateHold();
+      board->holdCooldown = 1;
+      updateHold(board);
     }
   }
 
-  if (timeToDrop <= 0) { // soft drop
-    timeToDrop = dropTime / level;
-    sdrop(1);
+  if (board->timeToDrop <= 0) { // soft drop
+    board->timeToDrop = dropTime / board->level;
+    sdrop(1, board);
   } else {
-    timeToDrop--;
+    board->timeToDrop--;
   }
 }
 
-void drawGame() {
-  werase(gameWin); // clear screen
+void drawGame(struct tetBoard *board) {
+  werase(board->gameWin); // clear screen
 
-  wattron(gameWin, COLOR_PAIR(8));
-  wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
+  wattron(board->gameWin, COLOR_PAIR(8));
+  wborder(board->gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
 
-  if (orderCount >= 7) {
-    orderCount = 0;
+  if (board->orderCount >= 7) {
+    board->orderCount = 0;
   }
 
   for (int x = 0; x < wid; x++) {
     for (int y = 0; y < len; y++) {
-      if (grid[x][y] != 0) {
-        wmove(gameWin, y + 1, x + 1);
-        wattron(gameWin, COLOR_PAIR(grid[x][y]));
-        waddch(gameWin, tetrominoes[grid[x][y]-1]);
+      if (board->grid[x][y] != 0) {
+        wmove(board->gameWin, y + 1, x + 1);
+        wattron(board->gameWin, COLOR_PAIR(board->grid[x][y]));
+        waddch(board->gameWin, tetrominoes[board->grid[x][y]-1]);
       }
     }
   }
 
-  getTetromino(dir, cur, blocks);
+  getTetromino(board->dir, board->cur, board->blocks);
 
-  findGhost();
+  findGhost(board);
 
-  wattron(gameWin, COLOR_PAIR(9)); // ghost piece is gray
+  wattron(board->gameWin, COLOR_PAIR(9)); // ghost piece is gray
 
-  if (ghostOffset > 0) {
+  if (board->ghostOffset > 0) {
     for (int i = 0; i < 4; i++) { // draw ghost piece
-      wmove(gameWin, blocks[i][1] + tY + 1 + ghostOffset, blocks[i][0] + tX + 1);
-      waddch(gameWin, tetrominoes[cur]);
+      wmove(board->gameWin, board->blocks[i][1] + board->piece.y + 1 + board->ghostOffset, board->blocks[i][0] + board->piece.x + 1);
+      waddch(board->gameWin, tetrominoes[board->cur]);
     }
   }
 
-  wattron(gameWin, COLOR_PAIR(cur+1));
+  wattron(board->gameWin, COLOR_PAIR(board->cur+1));
 
   for (int i = 0; i < 4; i++) { // draw current tetris piece
-    if (blocks[i][1] + tY >= 0 || i == 3) {
-      wmove(gameWin, blocks[i][1] + tY + 1, blocks[i][0] + tX + 1);
-      waddch(gameWin, tetrominoes[cur]);
+    if (board->blocks[i][1] + board->piece.y >= 0 || i == 3) {
+      wmove(board->gameWin, board->blocks[i][1] + board->piece.y + 1, board->blocks[i][0] + board->piece.x + 1);
+      waddch(board->gameWin, tetrominoes[board->cur]);
     }
   }
 
-  wmove(gameWin, 0, 0);
+  wmove(board->gameWin, 0, 0);
 
-  wrefresh(gameWin);
+  wrefresh(board->gameWin);
 }
 
 void printCenter(char *s, int offset) { // prints text at center of screen
@@ -724,6 +745,8 @@ void printCenter(char *s, int offset) { // prints text at center of screen
 }
 
 int main() {
+  struct tetBoard tetris = newBoard();
+
   initscr(); // initialize ncurses
 
   getmaxyx(stdscr, h, w); // get width and height of screen
@@ -754,55 +777,55 @@ int main() {
     init_pair(8, COLOR_WHITE, 0); // default
     init_pair(9, 9, 0); // gray is used for ghost piece
 
-    gameWin = newwin(len + 2, wid + 2, (h-len) / 2, (w-wid) / 2);
-    nextWin = newwin(nextLen * 4 + 4, 6, (h-len) / 2 - 1, (w+wid) / 2 + 3);
-    holdWin = newwin(10, 6, (h-len) / 2, (w-wid) / 2 - 8);
-    statsWin = newwin(8, 7, (h+len) / 2 - 6, (w-wid) / 2 - 8);
-    lineClearWin = newwin(1, w, ((h-len) / 2) + len + 3, 1);
+    tetris.gameWin = newwin(len + 2, wid + 2, (h-len) / 2, (w-wid) / 2);
+    tetris.nextWin = newwin(nextLen * 4 + 4, 6, (h-len) / 2 - 1, (w+wid) / 2 + 3);
+    tetris.holdWin = newwin(10, 6, (h-len) / 2, (w-wid) / 2 - 8);
+    tetris.statsWin = newwin(8, 7, (h+len) / 2 - 6, (w-wid) / 2 - 8);
+    tetris.lineClearWin = newwin(1, w, ((h-len) / 2) + len + 3, 1);
 
-    timeToDrop = dropTime / level;
-    shuffle(order, 7); // shuffle order
+    tetris.timeToDrop = dropTime / tetris.level;
+    shuffle(tetris.order, 7); // shuffle order
 
     for (int i = 0; i < nextLen; i++) { // fill next array
-      next[i] = popBag();
+      tetris.next[i] = popBag(&tetris);
     }
 
-    tX = wid / 2 - 1; // init x position
+    tetris.piece.x = wid / 2 - 1; // init x position
 
     getch(); // first run of getch, to make sure nothing is cleared for no reason.
 
-    updateHold();
-    updateStats();
-    updateNext();
+    updateHold(&tetris);
+    updateStats(&tetris);
+    updateNext(&tetris);
 
-    wattron(gameWin, COLOR_PAIR(8)); // default colors
+    wattron(tetris.gameWin, COLOR_PAIR(8)); // default colors
 
     for (int i = secondsToStart; i > 0; i--) { // countdown
       char num[wid]; // for whatever reason, cannot have length of 1.
       sprintf(num, "%d", i); // format number
-      werase(gameWin); // clear screen
-      wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
-      wprintCenter(gameWin, num, 0);
-      wmove(gameWin, 0, 0);
-      wrefresh(gameWin);
+      werase(tetris.gameWin); // clear screen
+      wborder(tetris.gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
+      wprintCenter(tetris.gameWin, num, 0);
+      wmove(tetris.gameWin, 0, 0);
+      wrefresh(tetris.gameWin);
       sleep(1);
     }
 
-    werase(gameWin); // clear screen
-    wborder(gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
-    wprintCenter(gameWin, "START!", 0);
-    wmove(gameWin, 0, 0);
-    wrefresh(gameWin);
+    werase(tetris.gameWin); // clear screen
+    wborder(tetris.gameWin, '|', '|', '-', '-', '+', '+', '+', '+'); // ascii borders
+    wprintCenter(tetris.gameWin, "START!", 0);
+    wmove(tetris.gameWin, 0, 0);
+    wrefresh(tetris.gameWin);
     sleep(1);
 
     while (getch() != -1) {} // clear input
 
-    cur = popNext(); // get current tetromino
+    tetris.cur = popNext(&tetris); // get current tetromino
 
     while (1) { // game loop
-      processKeys();
+      processKeys(&tetris);
 
-      drawGame();
+      drawGame(&tetris);
 
       usleep(1);
     }
