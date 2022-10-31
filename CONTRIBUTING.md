@@ -3,8 +3,7 @@
 ASCII games are cool. No wonder you want to contribute!
 
 Before you get started coding your awesome game, there's some things I want you to know:
-- **These games are meant to be run on a Linux machine.** Write your game for Linux, not windows.
-- **Your game must be written in C.** No C++ nonsense. For whatever reason, I just don't like C++. If you have a good reason to write your game in C++, contact me.
+- **These games are meant to be run on a Linux machine.** Write your game for Linux, not Windows. (If you want to make it for Windows however, do not let that deter you. You can make it and put it on your own repo.)
 - The only dependency people should have to install on their machine should be ncurses. Nothing extra, except the standard C built-in libraries.
 - Your game must be inside a folder in this repo with the same name as the game.
 - You must add your game to the Makefile, so people can easily compile your game.
