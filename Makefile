@@ -1,7 +1,8 @@
 CC      := gcc
+CPP	:= g++
 LIBS    := -lncurses
 OUT_DIR := build
-TARGETS := tetris snake conway video
+TARGETS := tetris snake conway video minesweeper
 
 .PHONY: $(TARGETS) clean install
 
@@ -21,6 +22,9 @@ conway: conway/conway.c | $(OUT_DIR)
 
 video: video-player/video-player.c | $(OUT_DIR)
 	$(CC) $< -o $(OUT_DIR)/$@ $(LIBS) -lpng
+
+minesweeper: minesweeper/minesweeper.cpp | $(OUT_DIR)
+	$(CPP) $< -o $(OUT_DIR)/$@
 
 clean:
 	rm -r $(OUT_DIR)
