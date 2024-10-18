@@ -93,7 +93,7 @@ void moveSnake() {
 
 void printCenter(char *s, int offset) { // prints text at center of screen
   move((h / 2) + offset, (w - strlen(s)) / 2);
-  printw(s);
+  printw("%s", s);
 }
 
 void drawGame() {

@@ -330,7 +330,7 @@ void wprintCenter(WINDOW *win, char *s, int offset) { // prints text at center o
   int w, h;
   getmaxyx(win, h, w);
   wmove(win, (h / 2) + offset, (w - strlen(s)) / 2);
-  wprintw(win, s);
+  wprintw(win, "%s", s);
 }
 
 void findGhost(struct tetBoard *board) {
@@ -366,14 +366,14 @@ void updateStats(struct tetBoard *board) {
 
   sprintf(buf, "%d", board->level);
   wmove(board->statsWin, 2, 7 - strlen(buf));
-  wprintw(board->statsWin, buf);
+  wprintw(board->statsWin, "%s", buf);
 
   wmove(board->statsWin, 4, 2);
   wprintw(board->statsWin, "LINES");
 
   sprintf(buf, "%d/%d", board->lines, board->level * 5);
   wmove(board->statsWin, 6, 7 - strlen(buf));
-  wprintw(board->statsWin, buf);
+  wprintw(board->statsWin, "%s", buf);
 
   wrefresh(board->statsWin);
 }
@@ -741,7 +741,7 @@ void drawGame(struct tetBoard *board) {
 
 void printCenter(char *s, int offset) { // prints text at center of screen
   move((h / 2) + offset, (w - strlen(s)) / 2);
-  printw(s);
+  printw("%s", s);
 }
 
 int main() {
